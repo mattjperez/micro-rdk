@@ -37,7 +37,7 @@ use super::{
 
 static NAMESPACE_PREFIX: &str = "rdk:builtin:";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum ResourceType {
     Motor(MotorType),
     Board(BoardType),
@@ -351,7 +351,6 @@ impl LocalRobot {
             }
             "sensor" => {
                 let ctor = registry.get_sensor_constructor(model)?;
-                log::info!("constructor acquired");
                 ResourceType::Sensor(ctor(cfg, deps)?)
             }
             "movement_sensor" => {
@@ -371,7 +370,6 @@ impl LocalRobot {
             }
         };
         self.resources.insert(r_name, res);
-        log::info!("{:?}", self.resources);
         Ok(())
     }
 
