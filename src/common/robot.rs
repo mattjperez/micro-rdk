@@ -351,7 +351,7 @@ impl LocalRobot {
             }
             "sensor" => {
                 let ctor = registry.get_sensor_constructor(model)?;
-                log::info!("constructor acquired")
+                log::info!("constructor acquired");
                 ResourceType::Sensor(ctor(cfg, deps)?)
             }
             "movement_sensor" => {
