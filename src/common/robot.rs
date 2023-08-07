@@ -37,7 +37,7 @@ use super::{
 
 static NAMESPACE_PREFIX: &str = "rdk:builtin:";
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ResourceType {
     Motor(MotorType),
     Board(BoardType),
