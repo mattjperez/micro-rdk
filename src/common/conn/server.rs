@@ -328,6 +328,16 @@ where
             );
             loop {
                 if let Err(e) = grpc.next_request().await {
+                    // TODO mattjperez stop motors
+                    robot
+                        .lock()
+                        .unwrap()
+                        .get_board_by_name("board".to_string())
+                        .unwrap()
+                        .lock()
+                        .unwrap()
+                        .set_gpio_pin_level(15, false)
+                        .unwrap();
                     break Err(ServerError::Other(e.into()));
                 }
             }
