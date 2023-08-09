@@ -314,14 +314,12 @@ impl LocalRobot {
                             &mut registry,
                         ) {
                             Ok(()) => {
-                                    log::info!("mattjperez - successfully added {} {:?}", model, resource_name);
                                     if model == "moisture" {
                                         log::info!("Moisture Tracking B");
                                     };
 
                                 }
                                 Err(err) => {
-                                    log::info!("mattjperez - successfully added {} {:?}", model, resource_name);
                                     if model == "moisture" {
                                         log::info!("Moisture Tracking C");
                                     };
@@ -359,6 +357,7 @@ impl LocalRobot {
     ) -> anyhow::Result<()> {
         log::info!("inserting resource - model: {}  r_name: {:?}", model, r_name);
         let r_type = cfg.get_type();
+        log::info!("rtype: {r_type}");
         let res = match r_type {
             "motor" => {
                 let ctor = registry.get_motor_constructor(model)?;
