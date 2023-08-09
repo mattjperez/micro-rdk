@@ -22,6 +22,7 @@ use crate::{
         robot,
     },
 };
+use anyhow::bail;
 use log::*;
 
 use super::{
@@ -371,10 +372,14 @@ impl LocalRobot {
                 })
             }
             "sensor" => {
-                let ctor = registry.get_sensor_constructor(model.to_string())?;
-                if model == "moisture".to_string() {
-                    log::info!("inside insert_resource for moisture")
-
+                let ctor = match registry.get_sensor_constructor(model.to_string()) {
+                    Ok(ctor) => ctor,
+                    Err(e) => {
+                        if model == "moisture".to_string() {
+                            log::info!("inside insert_resource for moisture")
+                        };
+                        bail!("{:?}", e);
+                    }
                 };
                 ResourceType::Sensor(ctor(cfg, deps)?)
             }
