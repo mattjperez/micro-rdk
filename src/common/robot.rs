@@ -280,7 +280,9 @@ impl LocalRobot {
                                 dependencies,
                                 &mut registry,
                             ) {
-                                Ok(()) => {}
+                                Ok(()) => {
+                                        log::info!("mattjperez - successfully added {} {:?}", model, resource_name);
+                                    }
                                 Err(err) => {
                                     log::error!("{:?}", err);
                                     continue;
@@ -289,7 +291,7 @@ impl LocalRobot {
                             inserted_resources.insert(resource_key);
                         } else {
                             let model = model.to_string();
-                            log::debug!("skipping {model} for now...");
+                            log::info!("skipping {model} for now...");
                             components.push(comp_cfg)
                         }
                     }
