@@ -232,9 +232,11 @@ impl LocalRobot {
                     );
                 }
             };
+            log::info!("ResourceKey::new({} - {})", c_type_static, resource_name.name.to_string());
             let resource_key = ResourceKey::new(c_type_static, resource_name.name.to_string())?;
 
             if !inserted_resources.contains(&resource_key) {
+                log::info!("getting dependency function for {c_type_static}");
                 match registry.get_dependency_function(c_type_static, model.to_string()) {
                     Ok(dependency_getter) => {
                         let dependency_resource_keys =
@@ -253,6 +255,7 @@ impl LocalRobot {
                                             subtype: dep_key.0.to_string(),
                                             name: dep_key.1.to_string(),
                                         };
+                                        log::info!("{:?}", dep_r_name);
                                         let res = match self.resources.get(&dep_r_name) {
                                             Some(r) => r.clone(),
                                             None => anyhow::bail!("dependency not created yet"),
@@ -336,6 +339,7 @@ impl LocalRobot {
         deps: Vec<Dependency>,
         registry: &mut ComponentRegistry,
     ) -> anyhow::Result<()> {
+        log::info!("inserting resource - model: {}  r_name: {:?}", model, r_name);
         let r_type = cfg.get_type();
         let res = match r_type {
             "motor" => {
