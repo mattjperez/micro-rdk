@@ -333,7 +333,7 @@ impl LocalRobot {
                 components
             );
         }
-        for (k, _) in self.resources.into_iter() {
+        for (k, _) in self.resources.iter() {
             log::info!("ResourceKey: {:?}", k);
         };
         Ok(())
