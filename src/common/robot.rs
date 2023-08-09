@@ -333,6 +333,9 @@ impl LocalRobot {
                 components
             );
         }
+        for (k, _) in self.resources.into_iter() {
+            log::info!("ResourceKey: {:?}", k);
+        };
         Ok(())
     }
 
@@ -562,10 +565,23 @@ impl LocalRobot {
             subtype: "sensor".to_string(),
             name,
         };
+        log::info!("resource name to fetch: {:?}, ", &name);
+
         match self.resources.get(&name) {
-            Some(ResourceType::Sensor(r)) => Some(r.clone()),
-            Some(_) => None,
-            None => None,
+            Some(ResourceType::Sensor(r)) => {
+                log::info!("AAAAA");
+                Some(r.clone())
+            }
+            Some(_) => {
+
+                log::info!("BBBB");
+                None
+            },
+            None => {
+
+                log::info!("CCC");
+                None
+            }
         }
     }
 
