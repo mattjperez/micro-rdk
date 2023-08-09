@@ -58,6 +58,10 @@ pub fn serve_web(
             RobotRepresentation::WithRegistry(registry) => {
                 log::info!("building robot from config");
                 let r = LocalRobot::new_from_config_response(&cfg_response, registry).unwrap();
+                if r.get_sensor_by_name("moisture").is_some() {
+
+                    log::info!("mattjperez - moisture sensor");
+                };
                 Arc::new(Mutex::new(r))
             }
         };
