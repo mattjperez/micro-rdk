@@ -275,7 +275,7 @@ impl LocalRobot {
                             }
                             match self.insert_resource(
                                 model.to_string(),
-                                resource_name,
+                                resource_name.clone(),
                                 ConfigType::Dynamic(comp_cfg.try_into()?),
                                 dependencies,
                                 &mut registry,
