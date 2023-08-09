@@ -305,12 +305,15 @@ impl LocalRobot {
                         }
                         match self.insert_resource(
                             model.to_string(),
-                            resource_name,
+                            resource_name.clone(),
                             ConfigType::Dynamic(comp_cfg.try_into()?),
                             dependencies,
                             &mut registry,
                         ) {
-                            Ok(()) => {}
+                            Ok(()) => {
+                                    log::info!("mattjperez - successfully added {} {:?}", model, resource_name);
+
+                                }
                             Err(err) => {
                                 log::error!("{:?}", err);
                                 continue;
