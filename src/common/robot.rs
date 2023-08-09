@@ -296,6 +296,9 @@ impl LocalRobot {
                         }
                     }
                     Err(_) => {
+                        if model == "moisture" {
+                            log::info!("Moisture Tracking A");
+                        };
                         let mut dependencies = Vec::new();
                         if let Some(b) = board.as_ref() {
                             if let Some(b_r_key) = board_resource_key.as_ref() {
@@ -312,12 +315,19 @@ impl LocalRobot {
                         ) {
                             Ok(()) => {
                                     log::info!("mattjperez - successfully added {} {:?}", model, resource_name);
+                                    if model == "moisture" {
+                                        log::info!("Moisture Tracking B");
+                                    };
 
                                 }
-                            Err(err) => {
-                                log::error!("{:?}", err);
-                                continue;
-                            }
+                                Err(err) => {
+                                    log::info!("mattjperez - successfully added {} {:?}", model, resource_name);
+                                    if model == "moisture" {
+                                        log::info!("Moisture Tracking C");
+                                    };
+                                    log::error!("{:?}", err);
+                                    continue;
+                                }
                         };
                         inserted_resources.insert(resource_key);
                     }
@@ -363,6 +373,10 @@ impl LocalRobot {
             }
             "sensor" => {
                 let ctor = registry.get_sensor_constructor(model)?;
+                if model == "moisture".to_string() {
+                    log::info!("inside insert_resource for moisture")
+
+                };
                 ResourceType::Sensor(ctor(cfg, deps)?)
             }
             "movement_sensor" => {
