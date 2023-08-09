@@ -372,7 +372,7 @@ impl LocalRobot {
                 })
             }
             "sensor" => {
-                let ctor = registry.get_sensor_constructor(model)?;
+                let ctor = registry.get_sensor_constructor(model.to_string())?;
                 if model == "moisture".to_string() {
                     log::info!("inside insert_resource for moisture")
 
