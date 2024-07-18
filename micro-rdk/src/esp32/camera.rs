@@ -15,7 +15,7 @@ use crate::{
         camera::{
             camera_config_t, camera_config_t__bindgen_ty_1, camera_config_t__bindgen_ty_2,
             camera_fb_t, esp_camera_deinit, esp_camera_fb_get, esp_camera_fb_return,
-            esp_camera_init,
+            esp_camera_init, esp_camera_sensor_get,
         },
         esp,
     },
@@ -26,7 +26,7 @@ use bytes::{Bytes, BytesMut};
 use prost::Message;
 pub(crate) fn register_models(registry: &mut ComponentRegistry) {
     if registry
-        .register_camera("rdk:builtin:esp32-camera", &Esp32Camera::from_config)
+        .register_camera("esp32-camera", &Esp32Camera::from_config)
         .is_err()
     {
         log::error!("esp32camera type is already registered");
@@ -87,24 +87,24 @@ impl Esp32Camera {
         _: Vec<Dependency>,
     ) -> Result<CameraType, CameraError> {
         let pin_pwdn = cfg.get_attribute::<i32>("pin_pwdn").unwrap_or(-1);
-        let pin_reset = cfg.get_attribute::<i32>("pin_reset").unwrap_or(-1);
-        let pin_xclk = cfg.get_attribute::<i32>("pin_xclk").unwrap_or(21);
-        let pin_sccb_sda = cfg.get_attribute::<i32>("pin_sccb_sda").unwrap_or(26);
-        let pin_sccb_scl = cfg.get_attribute::<i32>("pin_sccb_scl").unwrap_or(27);
-        let pin_d7 = cfg.get_attribute::<i32>("pin_d7").unwrap_or(35);
-        let pin_d6 = cfg.get_attribute::<i32>("pin_d6").unwrap_or(34);
-        let pin_d5 = cfg.get_attribute::<i32>("pin_d5").unwrap_or(39);
-        let pin_d4 = cfg.get_attribute::<i32>("pin_d4").unwrap_or(36);
-        let pin_d3 = cfg.get_attribute::<i32>("pin_d3").unwrap_or(19);
-        let pin_d2 = cfg.get_attribute::<i32>("pin_d2").unwrap_or(18);
-        let pin_d1 = cfg.get_attribute::<i32>("pin_d1").unwrap_or(5);
-        let pin_d0 = cfg.get_attribute::<i32>("pin_d0").unwrap_or(4);
-        let pin_vsync = cfg.get_attribute::<i32>("pin_vsync").unwrap_or(25);
-        let pin_href = cfg.get_attribute::<i32>("pin_href").unwrap_or(23);
-        let pin_pclk = cfg.get_attribute::<i32>("pin_pclk").unwrap_or(22);
+        let pin_reset = cfg.get_attribute::<i32>("pin_reset").unwrap_or(15);
+        let pin_xclk = cfg.get_attribute::<i32>("pin_xclk").unwrap_or(27);
+        let pin_sccb_sda = cfg.get_attribute::<i32>("pin_sccb_sda").unwrap_or(25);
+        let pin_sccb_scl = cfg.get_attribute::<i32>("pin_sccb_scl").unwrap_or(23);
+        let pin_d7 = cfg.get_attribute::<i32>("pin_d7").unwrap_or(19);
+        let pin_d6 = cfg.get_attribute::<i32>("pin_d6").unwrap_or(36);
+        let pin_d5 = cfg.get_attribute::<i32>("pin_d5").unwrap_or(18);
+        let pin_d4 = cfg.get_attribute::<i32>("pin_d4").unwrap_or(39);
+        let pin_d3 = cfg.get_attribute::<i32>("pin_d3").unwrap_or(5);
+        let pin_d2 = cfg.get_attribute::<i32>("pin_d2").unwrap_or(34);
+        let pin_d1 = cfg.get_attribute::<i32>("pin_d1").unwrap_or(35);
+        let pin_d0 = cfg.get_attribute::<i32>("pin_d0").unwrap_or(32);
+        let pin_vsync = cfg.get_attribute::<i32>("pin_vsync").unwrap_or(22);
+        let pin_href = cfg.get_attribute::<i32>("pin_href").unwrap_or(26);
+        let pin_pclk = cfg.get_attribute::<i32>("pin_pclk").unwrap_or(21);
         let xclk_freq_hz = cfg
             .get_attribute::<i32>("xclk_freq_hz")
-            .unwrap_or(20_000_000);
+            .unwrap_or(10_000_000);
         let ledc_timer = cfg.get_attribute::<u32>("ledc_timer").unwrap_or(1);
         let ledc_channel = cfg.get_attribute::<u32>("ledc_channel").unwrap_or(1);
         let frame_size = cfg
@@ -113,7 +113,7 @@ impl Esp32Camera {
         // Quality of JPEG output: 0-63 lower means higher quality
         let jpeg_quality = cfg.get_attribute::<i32>("jpeg_quality").unwrap_or(32);
         //  If pin_sccb_sda is -1, use the already configured I2C bus by number
-        let sccb_i2c_port = cfg.get_attribute::<i32>("sccb_i2c_port").unwrap_or(0);
+        let sccb_i2c_port = cfg.get_attribute::<i32>("sccb_i2c_port").unwrap_or(-1);
 
         let cam = Self {
             config: camera_config_t {
@@ -143,14 +143,13 @@ impl Esp32Camera {
                 // If more than one, then each frame will be acquired (double speed)
                 // when pixel_format == jpeg, fb_count > 1 goes to continuous mode, may need to adjust
                 // xclk_freq_hz down to 10_000_000.
-                fb_count: 1,
+                fb_count: 2,
                 grab_mode: 0,
                 fb_location: 0,
                 sccb_i2c_port,
             },
         };
 
-        /*
         unsafe {
             let sensor = esp_camera_sensor_get();
             if (*sensor).id.PID == 0x3660 {
@@ -159,7 +158,6 @@ impl Esp32Camera {
                 (*sensor).set_saturation.unwrap()(sensor, -2); // reduce saturation
             }
         }
-        */
 
         esp!(unsafe { esp_camera_init(&cam.config) })
             .map_err(|e| CameraError::InitError(Box::new(e)))?;

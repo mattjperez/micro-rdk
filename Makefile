@@ -63,7 +63,7 @@ upload: cargo-ver
 	cargo +esp espflash flash --package micro-rdk-server --monitor --partition-table micro-rdk-server/esp32/partitions.csv --baud 460800 -f 80mhz --bin micro-rdk-server-esp32 --target=xtensa-esp32-espidf -Zbuild-std=std,panic_abort
 
 test:
-	cargo test -p micro-rdk --lib --features native,provisioning
+	cargo test -p micro-rdk --lib --features native,provisioning,camera
 
 clippy-native:
 	cargo clippy -p micro-rdk --no-deps --features native,provisioning  -- -Dwarnings
@@ -99,7 +99,7 @@ build-esp32-bin:
 
 flash-esp32-bin:
 ifneq (,$(wildcard ./target/xtensa-esp32-espidf/micro-rdk-server-esp32.bin))
-	espflash write-bin 0x0 ./target/xtensa-esp32-espidf/micro-rdk-server-esp32.bin --baud 460800  && sleep 2 && espflash monitor
+	espflash write-bin 0x0 ./target/xtensa-esp32-espidf/micro-rdk-server-esp32.bin --baud 115200  && sleep 2 && espflash monitor
 else
 	$(error micro-rdk-server-esp32.bin not found, run make build-esp32-bin first)
 endif
