@@ -537,6 +537,16 @@ where
         ));
         self.app_client_tasks.push(config_monitor_task);
 
+        #[cfg(feature = "ota")]
+        {
+            log::info!("ota feature engaged");
+            let service = config
+                .services
+                .iter()
+                .find(|&service| service.model == "rdk:builtin:ota_service");
+            log::info!("{:#?}", service);
+        }
+
         let mut robot = LocalRobot::from_cloud_config(
             self.executor.clone(),
             robot_creds.robot_id.clone(),
