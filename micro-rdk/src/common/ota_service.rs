@@ -1,16 +1,50 @@
+use crate::common::config::{AttributeError, Kind};
 use crate::proto::app::v1::ServiceConfig;
 
-pub struct OtaService {
-    ota_config: ServiceConfig,
+/*
+ServiceConfig {
+        name: "OTA",
+        namespace: "rdk",
+        r#type: "generic",
+        attributes: Some(
+            Struct {
+                fields: {
+                    "url": Value {
+                        kind: Some(
+                            StringValue(
+                            "https://my.bucket.com/my-ota.bin",
+                            ),
+                        ),
+                    },
+                },
+            },
+        ),
+        depends_on: [],
+        model: "rdk:builtin:ota_service",
+        api: "rdk:service:generic",
+        service_configs: [],
+        log_configuration: None,
+}
+ */
+#[derive(Debug)]
+pub(crate) struct OtaService {
+    uri: hyper::Uri,
 }
 
 impl OtaService {
-    pub fn new(ota_config: ServiceConfig) -> Self {
-        Self { ota_config }
+    pub(crate) fn new(ota_config: &ServiceConfig) -> Self {
+        let kind = ota_config.attributes.as_ref().unwrap().fields.get("url").unwrap().kind.clone().unwrap();
+        let url = match kind {
+            crate::google::protobuf::value::Kind::StringValue(s) => s,
+            _ => "".to_string()
+        };
+        let uri = url.parse::<hyper::Uri>().unwrap();
+
+        Self { uri }
     }
 
-    pub fn update(&mut self) -> Result<(), String> {
-        // check stored config for url, validate (uri crate?)
+    pub(crate) fn update(&mut self) -> Result<(), String> {
+
         //    check hash/version/metadata compare to active ota hash/version/metadata
         // get handle to inactive slot
         // start ota process on inactive slot, get write buffer

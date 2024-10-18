@@ -545,8 +545,9 @@ where
                 .iter()
                 .find(|&service| service.model == "rdk:builtin:ota_service")
             {
-                log::info!("{:#?}", service);
-                let mut ota = crate::common::ota_service::OtaService::new(service.clone());
+                log::info!("service config: {:#?}", service);
+                let mut ota = crate::common::ota_service::OtaService::new(&service);
+                log::info!("OtaService: {:?}", ota);
                 if let Err(e) = ota.update() {
                     log::error!("failed to update ota partitions: {:?}", e);
                 } else {
