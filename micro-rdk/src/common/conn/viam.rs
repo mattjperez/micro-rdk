@@ -539,12 +539,22 @@ where
 
         #[cfg(feature = "ota")]
         {
-            log::info!("ota feature engaged");
-            let service = config
+            log::info!("ota feature enabled");
+            if let Some(service) = config
                 .services
                 .iter()
-                .find(|&service| service.model == "rdk:builtin:ota_service");
-            log::info!("{:#?}", service);
+                .find(|&service| service.model == "rdk:builtin:ota_service")
+            {
+                log::info!("{:#?}", service);
+                let mut ota = crate::common::ota_service::OtaService::new(service.clone());
+                if let Err(e) = ota.update() {
+                    log::error!("failed to update ota partitions: {:?}", e);
+                } else {
+                    log::info!("properly updated");
+                }
+            } else {
+                log::info!("no service of type `ota_service` found in robot config");
+            }
         }
 
         let mut robot = LocalRobot::from_cloud_config(
