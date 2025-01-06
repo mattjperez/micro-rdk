@@ -51,7 +51,8 @@ use crate::esp32::esp_idf_svc::{
     sys::{esp_ota_get_next_update_partition, esp_partition_t},
 };
 use async_io::Timer;
-use futures_lite::FutureExt;
+use futures_lite::{FutureExt, StreamExt};
+use futures_util::TryFutureExt;
 use http_body_util::{BodyExt, Empty};
 use hyper::{body::Bytes, client::conn::http2, Request};
 use once_cell::sync::Lazy;
@@ -123,11 +124,11 @@ pub(crate) enum ConfigError {
 
 /// used to differentiate between no-frame and a timeout
 #[derive(Error, Debug)]
-enum FrameError {
-    #[error("unreachable: file a bug ticket if surfaced")]
-    NoOp,
+pub(crate) enum FrameError {
     #[error("resolving next frame took longer than {0} seconds")]
     Timeout(usize),
+    #[error(transparent)]
+    Network(#[from] hyper::Error),
 }
 
 #[allow(dead_code)]
@@ -368,7 +369,7 @@ impl<S: OtaMetadataStorage> OtaService<S> {
             .uri(uri)
             .body(Empty::<Bytes>::new())
             .map_err(|e| OtaError::Other(e.to_string()))?;
-        let mut response = sender
+        let response = sender
             .send_request(request)
             .await
             .map_err(|e| OtaError::Other(e.to_string()))?;
@@ -425,13 +426,16 @@ impl<S: OtaMetadataStorage> OtaService<S> {
         let mut stream = response.into_data_stream();
 
         loop {
-            match stream.next().ok_or(FrameError::NoOp).or(async {
-                async_io::Timer::after(Duration::from_secs(30)).await;
-                Err(FrameError::Timeout(30))
-            }).await {
-                Ok(frame) => {
-                    let data = frame.expect();
-
+            match stream
+                .try_next()
+                .map_err(|e| FrameError::Network(e))
+                .or(async {
+                    async_io::Timer::after(Duration::from_secs(30)).await;
+                    Err(FrameError::Timeout(30))
+                })
+                .await
+            {
+                Ok(Some(data)) => {
                     total_downloaded += data.len();
 
                     if !got_info {
@@ -502,16 +506,13 @@ impl<S: OtaMetadataStorage> OtaService<S> {
                         file_len
                     );
                 }
+                Ok(None) => break,
                 Err(e) => {
-                    match e {
-                        // no further frames to be processed
-                        FrameError::NoOp => break,
-                        FrameError::Timeout(s) => {
-                            // close resources
-                            //return larger error
-                            return Err(OtaError::StalledDownload(e));
-                        }
-                    }
+                    #[cfg(feature = "esp32")]
+                    update_handle
+                        .abort()
+                        .map_err(|e| OtaError::AbortError(format!("{:?}", e)))?;
+                    return Err(OtaError::StalledDownload(e.into()));
                 }
             }
         }
