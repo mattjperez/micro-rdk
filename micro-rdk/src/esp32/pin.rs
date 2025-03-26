@@ -1,4 +1,4 @@
-use super::pwm::PwmDriver;
+//use super::pwm::PwmDriver;
 use crate::common::board::BoardError;
 use crate::esp32::esp_idf_svc::hal::gpio::{
     AnyIOPin, InputOutput, InterruptType, Pin, PinDriver, Pull,
@@ -58,7 +58,7 @@ pub struct Esp32GPIOPin {
     driver: PinDriver<'static, AnyIOPin, InputOutput>,
     interrupt_type: Option<InterruptType>,
     event_count: Arc<AtomicU32>,
-    pwm_driver: Option<PwmDriver<'static>>,
+    //    pwm_driver: Option<PwmDriver<'static>>,
 }
 
 impl Esp32GPIOPin {
@@ -76,7 +76,7 @@ impl Esp32GPIOPin {
             driver,
             interrupt_type: None,
             event_count: Arc::new(AtomicU32::new(0)),
-            pwm_driver: None,
+            //pwm_driver: None,
         })
     }
 
@@ -89,12 +89,13 @@ impl Esp32GPIOPin {
     }
 
     pub fn set_high(&mut self) -> Result<(), BoardError> {
-        if self.pwm_driver.is_some() {
-            return Err(BoardError::GpioPinError(
-                self.pin as u32,
-                "is pwm cannot set level",
-            ));
-        }
+        // if self.pwm_driver.is_some() {
+        //     return Err(BoardError::GpioPinError(
+        //         self.pin as u32,
+        //         "is pwm cannot set level",
+        //     ));
+        // }
+        todo!();
         // TODO losing esperr info -> make sure it can be logged?
         self.driver
             .set_high()
@@ -102,22 +103,24 @@ impl Esp32GPIOPin {
     }
 
     pub fn set_low(&mut self) -> Result<(), BoardError> {
-        if self.pwm_driver.is_some() {
-            return Err(BoardError::GpioPinError(
-                self.pin as u32,
-                "is pwm cannot set level",
-            ));
-        }
+        // if self.pwm_driver.is_some() {
+        //     return Err(BoardError::GpioPinError(
+        //         self.pin as u32,
+        //         "is pwm cannot set level",
+        //     ));
+        // }
+        todo!();
         self.driver
             .set_low()
             .map_err(|_| BoardError::GpioPinError(self.pin as u32, "cannot set high"))
     }
 
     pub fn get_pwm_duty(&self) -> f64 {
-        match &self.pwm_driver {
-            Some(pwm_driver) => pwm_driver.get_ledc_duty_pct(),
-            None => 0.0,
-        }
+        // match &self.pwm_driver {
+        //     Some(pwm_driver) => pwm_driver.get_ledc_duty_pct(),
+        //     None => 0.0,
+        // }
+        todo!()
     }
 
     pub fn set_pwm_duty(&mut self, pct: f64) -> Result<(), BoardError> {
@@ -127,29 +130,31 @@ impl Esp32GPIOPin {
                 "is not a pwm pin",
             ));
         }
-        match self.pwm_driver.as_mut() {
-            Some(pwm_driver) => {
-                pwm_driver
-                    .set_ledc_duty_pct(pct)
-                    .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
-            }
-            None => {
-                let mut pwm_driver = PwmDriver::new(unsafe { AnyIOPin::new(self.pin) }, 10000)
-                    .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
-                pwm_driver
-                    .set_ledc_duty_pct(pct)
-                    .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
-                self.pwm_driver = Some(pwm_driver);
-            }
-        };
-        Ok(())
+        todo!()
+        // match self.pwm_driver.as_mut() {
+        //     Some(pwm_driver) => {
+        //         pwm_driver
+        //             .set_ledc_duty_pct(pct)
+        //             .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
+        //     }
+        //     None => {
+        //         let mut pwm_driver = PwmDriver::new(unsafe { AnyIOPin::new(self.pin) }, 10000)
+        //             .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
+        //         pwm_driver
+        //             .set_ledc_duty_pct(pct)
+        //             .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
+        //         self.pwm_driver = Some(pwm_driver);
+        //     }
+        // };
+        // Ok(())
     }
 
     pub fn get_pwm_frequency(&self) -> u64 {
-        match &self.pwm_driver {
-            Some(pwm_driver) => pwm_driver.get_timer_frequency() as u64,
-            None => 0,
-        }
+        // match &self.pwm_driver {
+        //     Some(pwm_driver) => pwm_driver.get_timer_frequency() as u64,
+        //     None => 0,
+        // }
+        todo!();
     }
 
     pub fn set_pwm_frequency(&mut self, freq: u64) -> Result<(), BoardError> {
@@ -159,25 +164,26 @@ impl Esp32GPIOPin {
                 "is not a pwm pin",
             ));
         }
-        if freq == 0 {
-            self.pwm_driver = None
-        } else {
-            match self.pwm_driver.as_mut() {
-                Some(pwm_driver) => {
-                    pwm_driver
-                        .set_timer_frequency(freq as u32)
-                        .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
-                }
-                None => {
-                    let pwm_driver =
-                        PwmDriver::new(unsafe { AnyIOPin::new(self.pin) }, freq as u32).map_err(
-                            |e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)),
-                        )?;
-                    self.pwm_driver = Some(pwm_driver);
-                }
-            }
-        }
-        Ok(())
+        // if freq == 0 {
+        //     self.pwm_driver = None
+        // } else {
+        //     match self.pwm_driver.as_mut() {
+        //         Some(pwm_driver) => {
+        //             pwm_driver
+        //                 .set_timer_frequency(freq as u32)
+        //                 .map_err(|e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)))?;
+        //         }
+        //         None => {
+        //             let pwm_driver =
+        //                 PwmDriver::new(unsafe { AnyIOPin::new(self.pin) }, freq as u32).map_err(
+        //                     |e| BoardError::GpioPinOtherError(self.pin as u32, Box::new(e)),
+        //                 )?;
+        //             self.pwm_driver = Some(pwm_driver);
+        //         }
+        //     }
+        // }
+        // Ok(())
+        todo!()
     }
 
     pub fn is_interrupt(&self) -> bool {
