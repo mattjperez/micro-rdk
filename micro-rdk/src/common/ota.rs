@@ -47,7 +47,7 @@ use crate::{
 
 #[cfg(feature = "esp32")]
 use crate::esp32::esp_idf_svc::{
-    ota::{EspFirmwareInfoLoader, EspOta},
+    ota::{EspFirmwareInfoLoad, EspOta, FirmwareInfo},
     sys::{
         esp_app_desc_t, esp_image_header_t, esp_image_segment_header_t,
         esp_ota_get_next_update_partition, esp_partition_t,
@@ -464,6 +464,7 @@ impl<S: OtaMetadataStorage> OtaService<S> {
         let mut update_handle = Vec::new();
         let mut nwritten: usize = 0;
         let mut total_downloaded: usize = 0;
+        #[allow(unused_mut)]
         let mut got_info = false;
 
         log::info!("writing new firmware to address `{:#x}`", self.address,);
@@ -489,20 +490,35 @@ impl<S: OtaMetadataStorage> OtaService<S> {
                             #[cfg(feature = "esp32")]
                             {
                                 log::info!("verifying new ota firmware");
-                                let mut loader = EspFirmwareInfoLoader::new();
-                                loader
-                                    .load(&data)
+                                let mut new_fw = FirmwareInfo {
+                                    version: Default::default(),
+                                    released: Default::default(),
+                                    description: None,
+                                    signature: None,
+                                    download_id: None,
+                                };
+                                let loader = EspFirmwareInfoLoad {};
+                                // We *infer* that the binary is a valid by verifying
+                                // the presence of the firmware header in the first bytes,
+                                // however this does not imply validity of the image as a whole.
+                                let loaded = loader
+                                    .fetch(&data, &mut new_fw)
                                     .map_err(|e| OtaError::InvalidFirmware(e.to_string()))?;
-                                let new_fw = loader
-                                    .get_info()
-                                    .map_err(|e| OtaError::InvalidFirmware(e.to_string()))?;
-                                log::debug!(
-                                    "current firmware app description: {:?}",
-                                    running_fw_info
-                                );
-                                log::debug!("new firmware app description: {:?}", new_fw);
+                                if loaded {
+                                    log::debug!(
+                                        "current firmware app description: {:?}",
+                                        running_fw_info
+                                    );
+                                    log::debug!("new firmware app description: {:?}", new_fw);
+                                    got_info = true;
+                                } else {
+                                    log::error!(
+                                        "unable to validate image header in first {} bytes, terminating download",
+                                        total_downloaded
+                                    );
+                                    break;
+                                }
                             }
-                            got_info = true;
                         }
                     }
 

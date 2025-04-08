@@ -222,19 +222,6 @@ where
             max += 2;
         }
 
-        // But on an esp32 lacking SPIRAM, assume only one connection can be realized
-        #[cfg(target_os = "espidf")]
-        {
-            extern "C" {
-                pub static g_spiram_ok: bool;
-            }
-            unsafe {
-                if !g_spiram_ok {
-                    max = 1;
-                }
-            }
-        }
-
         max
     }
 
@@ -431,9 +418,18 @@ where
     pub fn run_forever(&mut self) -> ! {
         #[cfg(feature = "esp32")]
         {
+            use crate::esp32::esp_idf_svc::sys::{
+                esp_task_wdt_config_t, CONFIG_FREERTOS_NUMBER_OF_CORES,
+            };
+            let wdt_cfg = esp_task_wdt_config_t {
+                timeout_ms: (180 * 10_u32.pow(3)), // 180 seconds in milliseconds
+                trigger_panic: true,
+                idle_core_mask: (1 << CONFIG_FREERTOS_NUMBER_OF_CORES) - 1,
+            };
+
             // set the TWDT to expire after 3 minutes
             crate::esp32::esp_idf_svc::sys::esp!(unsafe {
-                crate::esp32::esp_idf_svc::sys::esp_task_wdt_init(180, true)
+                crate::esp32::esp_idf_svc::sys::esp_task_wdt_init(&wdt_cfg)
             })
             .unwrap();
 
@@ -1276,8 +1272,8 @@ mod tests {
         fn certificates(&self, _body: Bytes) -> Bytes {
             let self_signed =
                 rcgen::generate_simple_self_signed(["localhost".to_string()]).unwrap();
-            let tls_certificate = self_signed.serialize_pem().unwrap();
-            let tls_private_key = self_signed.serialize_private_key_pem();
+            let tls_certificate = self_signed.cert.pem();
+            let tls_private_key = self_signed.key_pair.serialize_pem();
             let resp = CertificateResponse {
                 id: "".to_owned(),
                 tls_certificate,

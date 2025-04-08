@@ -1,4 +1,3 @@
-use core::ffi::c_void;
 use std::{
     cell::RefCell,
     ffi::CString,
@@ -31,19 +30,15 @@ use {
 
 use esp_idf_svc::{
     hal::modem::WifiModem,
-    sys::{
-        esp_interface_t_ESP_IF_WIFI_STA, esp_wifi_get_config, esp_wifi_set_config, wifi_config_t,
-        wifi_scan_method_t_WIFI_ALL_CHANNEL_SCAN, wifi_sort_method_t_WIFI_CONNECT_AP_BY_SIGNAL,
-    },
     timer::EspTaskTimerService,
-    wifi::AsyncWifi,
+    wifi::{AsyncWifi, ScanMethod, ScanSortMethod},
 };
 use futures_util::lock::Mutex;
 use once_cell::sync::OnceCell;
 
 use crate::{
     common::{config::NetworkSetting, provisioning::server::WifiApConfiguration},
-    esp32::esp_idf_svc::sys::EspError,
+    esp32::{conn::wifi_error::WifiErrReason, esp_idf_svc::sys::EspError},
 };
 
 #[cfg(feature = "qemu")]
@@ -100,7 +95,8 @@ impl Esp32WifiNetwork {
             channel: 10,
             secondary_channel: None,
             protocols: Protocol::P802D11B | Protocol::P802D11BG | Protocol::P802D11BGN,
-            auth_method: esp_idf_svc::wifi::AuthMethod::WPA2Personal,
+            // TODO(RSDK-10193): There are esp_idf_svc vs embedded-svc ambiguities that arise here.
+            auth_method: AuthMethod::WPA2Personal,
             password: ap_config
                 .password
                 .as_str()
@@ -108,12 +104,15 @@ impl Esp32WifiNetwork {
                 .map_err(|_| WifiManagerError::HeaplessStringError)?,
             max_connections: 1,
         };
+        // TODO(10194): This is missing the `pmf_config` and `scan_method` fields
         let sta_conf = ClientConfiguration {
             ssid: "".try_into().unwrap(),
             bssid: None,
             auth_method: AuthMethod::None,
             password: "".try_into().unwrap(),
             channel: None,
+            scan_method: ScanMethod::CompleteScan(ScanSortMethod::Signal),
+            ..Default::default()
         };
 
         // may not want to store the config we can always retrieve it
@@ -144,34 +143,8 @@ impl Esp32WifiNetwork {
             netmask,
         };
 
-        let mut octet = addr.octets();
-        octet[3] += 1;
-
-        let start_ip = sys::ip4_addr {
-            addr: u32::from_le_bytes(octet),
-        };
-        octet[3] += 2;
-        let end_ip = sys::ip4_addr {
-            addr: u32::from_le_bytes(octet),
-        };
-
-        let mut dhcps_leases = sys::dhcps_lease_t {
-            enable: true,
-            start_ip,
-            end_ip,
-        };
-
         unsafe { sys::esp!(sys::esp_netif_dhcps_stop(handle)) }?;
         unsafe { sys::esp!(sys::esp_netif_set_ip_info(handle, &ip_info as *const _)) }?;
-        unsafe {
-            sys::esp!(sys::esp_netif_dhcps_option(
-                handle,
-                sys::esp_netif_dhcp_option_mode_t_ESP_NETIF_OP_SET,
-                sys::esp_netif_dhcp_option_id_t_ESP_NETIF_REQUESTED_IP_ADDRESS,
-                &mut dhcps_leases as *mut _ as *mut c_void,
-                std::mem::size_of::<sys::dhcps_lease_t>() as u32
-            ))
-        }?;
 
         let mut dns_config = sys::esp_netif_dns_info_t {
             ip: sys::esp_ip_addr_t {
@@ -211,28 +184,6 @@ impl Esp32WifiNetwork {
         wifi.stop().await?;
         wifi.set_configuration(&config)?;
 
-        let mut sta_config = wifi_config_t::default();
-
-        // Change the connection behavior to do a full scan and selecting the AP with the
-        // strongest signal, instead of connecting to the first found AP which may not be the best
-        // AP.
-        match esp_idf_svc::sys::esp!(unsafe {
-            esp_wifi_get_config(esp_interface_t_ESP_IF_WIFI_STA, &mut sta_config as *mut _)
-        }) {
-            Ok(_) => {
-                sta_config.sta.scan_method = wifi_scan_method_t_WIFI_ALL_CHANNEL_SCAN;
-                sta_config.sta.sort_method = wifi_sort_method_t_WIFI_CONNECT_AP_BY_SIGNAL;
-
-                if let Err(e) = esp_idf_svc::sys::esp!(unsafe {
-                    esp_wifi_set_config(esp_interface_t_ESP_IF_WIFI_STA, &mut sta_config as *mut _)
-                }) {
-                    log::warn!("couldn't update wifi station scan/sort config {:?}", e);
-                }
-            }
-            Err(e) => {
-                log::warn!("couldn't get wifi station config {:?}", e);
-            }
-        }
         drop(wifi);
         self.connect().await?;
         Ok(())
@@ -251,25 +202,42 @@ impl Esp32WifiNetwork {
 
         let sl_stack = esp32_get_system_event_loop()?;
 
-        let subscription = sl_stack.subscribe::<WifiEvent, _>(move |event: WifiEvent| {
-            if matches!(event, WifiEvent::StaDisconnected) {
-                if let Ok(wifi) = esp32_get_wifi() {
-                    if let Some(mut wifi_guard) = wifi.try_lock() {
-                        let wifi_mut = wifi_guard.wifi_mut();
-                        if let Err(err) = wifi_mut.connect() {
-                            let ssid = wifi_mut
-                                .get_configuration()
-                                .map_or("<no_ssid>".to_owned(), |c| {
-                                    c.as_client_conf_ref().unwrap().ssid.to_string()
-                                });
-                            log::error!("could not connect to WiFi {} cause : {:?}", ssid, err);
+        let subscription =
+            sl_stack.subscribe::<WifiEvent, _>(move |event: WifiEvent| match event {
+                WifiEvent::StaDisconnected(disconnected) => {
+                    let ssid = String::from_utf8_lossy(disconnected.ssid());
+                    let reason: WifiErrReason = disconnected.reason().into();
+                    log::info!(
+                        "received a WiFi disconnection event for SSID `{}` (RSSI {}) with reason: {}",
+                        ssid,
+                        disconnected.rssi(),
+                        reason,
+                    );
+
+                    if let Ok(wifi) = esp32_get_wifi() {
+                        if let Some(mut wifi_guard) = wifi.try_lock() {
+                            let wifi_mut = wifi_guard.wifi_mut();
+                            if let Err(err) = wifi_mut.connect() {
+                                let ssid = wifi_mut
+                                    .get_configuration()
+                                    .map_or("<no_ssid>".to_owned(), |c| {
+                                        c.as_client_conf_ref().unwrap().ssid.to_string()
+                                    });
+                                log::error!(
+                                    "could not connect to WiFi `{}` cause : {:?}",
+                                    ssid,
+                                    err
+                                );
+                            }
                         }
                     }
                 }
-            } else if matches!(event, WifiEvent::StaConnected) {
-                log::info!("wifi connected event received");
-            }
-        })?;
+                WifiEvent::StaConnected(connected) => {
+                    let ssid = String::from_utf8_lossy(connected.ssid());
+                    log::info!("received a WiFi connection event for SSID `{}`", ssid);
+                }
+                _ => {}
+            })?;
         let _ = self._subscription.borrow_mut().replace(subscription);
         Ok(())
     }

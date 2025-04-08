@@ -59,14 +59,12 @@ crc32fast = "1.4.2"
 dialoguer = "0.11.0"
 dns-message-parser = { version = "0.7", default-features = false}
 either = "1.13.0"
-# TODO(RSDK-8991): Upgrade to latest `embedded-hal`
-embedded-hal = { version = "~0.2", features = ["unproven"] }
-embedded-svc = "0.27"
+embedded-hal = "1.0.0" 
+embedded-svc = "~0.28"
 embuild = "0.32.0"
 env_logger = "0.11.5"
 esp-idf-part = "0.5.0"
-# TODO(RSDK-8994): Upgrade to latest `esp-idf-svc`
-esp-idf-svc = { version = "~0.48", default-features = false }
+esp-idf-svc = { version = "~0.51", default-features = false }
 espflash = "3.3.0"
 futures = "0.3.31"
 futures-lite = "2"
@@ -75,8 +73,6 @@ futures-rustls = "~0.24"
 futures-util = "0.3.31"
 http-body-util = "0.1.2"
 hyper = { version = "1.5", default-features = false, features = ["server", "client", "http2"] }
-# TODO(RSDK-9045): Stop using lazy-static
-lazy_static = "1.5.0"
 local-ip-address = "0.6.3"
 log = "0.4.22"
 mdns-sd = { version = "0.12", default-features = false, features = ["async"] }
@@ -96,9 +92,8 @@ proc-macro2 = "1.0.92"
 prost = "0.13.4"
 prost-types = "0.13.4"
 quote = "1.0.37"
-rand = "0.8.5"
-# TODO(RSDK-8996): Upgrade `rcgen` to latest release
-rcgen = "~0.12"
+rand = "0.9.0"
+rcgen = "0.13.2"
 regex = "1.11"
 reqwest = "0.12.9"
 reqwless = "0.13.0"
@@ -110,8 +105,7 @@ rustls-pemfile = { version = "2.2" }
 scopeguard = "1.2.0"
 sctp-proto = "0.3.0"
 sdp = "0.6.2"
-# TODO(RSDK-9138): Upgrade to latest secrecy crate
-secrecy = { version = "~0.8.0", features = ["serde"] }
+secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 sha2 = "0.10.8"
