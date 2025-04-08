@@ -61,7 +61,7 @@ enum Commands {
 }
 
 /// Flash a new micro-RDK app image directly to an ESP32's `factory` partition
-#[derive(Args, Clone)]
+#[derive(Args)]
 struct AppImageArgs {
     #[clap(flatten)]
     flash_args: FlashArgs,
@@ -103,7 +103,7 @@ struct WriteCredentialsArgs {
 
 /// Flash a pre-compiled binary with the micro-RDK, the robot config, and wifi info
 /// directly to an ESP32 connected to your computer via data cable
-#[derive(Args, Clone)]
+#[derive(Args)]
 struct WriteFlashArgs {
     /// from espflash: baud, port
     #[clap(flatten)]
@@ -310,8 +310,9 @@ fn flash(
             pid,
             DEFAULT_BAUD,
             flash_args.log_format,
-            flash_args.log_output,
             true,
+            flash_args.processors,
+            None,
         )
         .map_err(|err| Error::MonitorError(err.to_string()))?;
     }
@@ -338,8 +339,8 @@ fn main() -> Result<(), Error> {
         clap::crate_version!()
     );
     let cli = Cli::parse();
-    match &cli.command {
-        Some(Commands::UpdateAppImage(args)) => update_app_image(args)?,
+    match cli.command {
+        Some(Commands::UpdateAppImage(args)) => update_app_image(&args)?,
         Some(Commands::WriteCredentials(args)) => {
             let app_path = PathBuf::from(args.binary_path.clone());
             let nvs_metadata = read_nvs_metadata(app_path.clone())?;
@@ -397,7 +398,7 @@ fn main() -> Result<(), Error> {
                 )?;
             }
             flash(
-                args.flash_args.clone(),
+                args.flash_args,
                 args.connect_args.clone(),
                 &config,
                 app_path,
@@ -536,8 +537,9 @@ fn update_app_image(args: &AppImageArgs) -> Result<(), Error> {
             pid,
             DEFAULT_BAUD,
             args.flash_args.log_format,
-            args.flash_args.log_output.clone(),
             true,
+            args.flash_args.processors.clone(),
+            None,
         )
         .map_err(|err| Error::MonitorError(err.to_string()))?;
     }

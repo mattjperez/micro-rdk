@@ -67,7 +67,7 @@ env_logger = "0.11.5"
 esp-idf-part = "0.5.0"
 # TODO(RSDK-8994): Upgrade to latest `esp-idf-svc`
 esp-idf-svc = { version = "~0.48", default-features = false }
-espflash = { git = "https://github.com/viamrobotics/espflash.git", branch = "monitor-output" }
+espflash = "3.3.0"
 futures = "0.3.31"
 futures-lite = "2"
 # TODO(RSDK-8995): Upgrade to latest `rustls` infrastructure
