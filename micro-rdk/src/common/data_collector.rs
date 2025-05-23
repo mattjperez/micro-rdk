@@ -88,6 +88,7 @@ impl TryFrom<&Kind> for DataCollectorConfig {
                     .try_into()?;
                 CollectionMethod::Gpios(pin)
             }
+            "Encoder" => CollectionMethod::TicksCount,
             _ => {
                 return Err(AttributeError::ConversionImpossibleError);
             }
@@ -115,7 +116,8 @@ pub enum CollectionMethod {
     // Board methods
     Analogs(String),
     Gpios(i32),
-    // TODO: RSDK-7127 - Implement collectors for all other applicable components/methods
+    // Encoder methods
+    TicksCount, // TODO: RSDK-7127 - Implement collectors for all other applicable components/methods
 }
 
 impl Display for CollectionMethod {
@@ -132,6 +134,7 @@ impl Display for CollectionMethod {
                 Self::CompassHeading => "CompassHeading",
                 Self::Analogs(_) => "Analogs",
                 Self::Gpios(_) => "Gpios",
+                Self::TicksCount => "TicksCount",
             },
             f,
         )
@@ -201,6 +204,7 @@ fn resource_method_pair_is_valid(resource: &ResourceType, method: &CollectionMet
                 CollectionMethod::Analogs(_) | CollectionMethod::Gpios(_)
             )
         }
+        ResourceType::Encoder(_) => matches!(method, CollectionMethod::TicksCount),
         _ => false,
     }
 }
@@ -347,6 +351,17 @@ impl DataCollector {
                     return Err(DataCollectionError::UnsupportedMethod(
                         self.method.clone(),
                         "movement_sensor".to_string(),
+                    ))
+                }
+            },
+            ResourceType::Encoder(ref mut res) => match self.method {
+                CollectionMethod::TicksCount => {
+                    // {value: int, position_type: int}
+                }
+                _ => {
+                    return Err(DataCollectionError::UnsupportedMethod(
+                        self.method.clone(),
+                        "encoder".to_string(),
                     ))
                 }
             },
